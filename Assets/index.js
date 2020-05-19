@@ -1,5 +1,8 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
+var columnify = require('columnify');
+
+// console.log(columnify(data, {columns: ["ID", "First Name", "Last Name", "Title", "Department", "Salary", "Manager"]}));
 
 var connection = mysql.createConnection({
     host: "localhost",
@@ -57,12 +60,17 @@ function start() {
 
 //view all employees 
 function viewAll() {
-    connection.query("SELECT * FROM employee", function (err, res) {
-        if (err) throw err;
-        // Log all results of the SELECT statement
-        console.log(res);
-        start();
-    })
+    connection.query(
+        "SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name, role.salary, employee.manager_id FROM employee JOIN role ON employee.role_id = role.id AND employee.manager_id = role.id JOIN department ON role.department_id = department.id",
+        function (err, res) {
+            if (err) throw err;
+            // Log all results of the SELECT statement
+            for (var i = 0; i < res.length; i++) {
+                console.log(res[i].id + " | " + res[i].first_name + " | " + res[i].last_name + " | " + res[i].title + " | " + res[i].name + " | " + res[i].salary + " | " + res[i].manager_id
+                )
+            }
+            start();
+        })
 };
 
 //view all employees by dept
