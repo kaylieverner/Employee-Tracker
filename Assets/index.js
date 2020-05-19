@@ -115,23 +115,61 @@ function addEmployee() {
             type: "list",
             message: "Select the employee's manager.",
             choices: ["manager choices go here"]
-        }, 
+        },
         {
             name: "title",
             type: "list",
             message: "Select the employee's title.",
             choices: ["title choices go here"]
-        }, 
+        },
         {
             name: "salary",
             type: "input",
             message: "Enter the employee's salary."
         }
     ]).then(function (answer) {
+        employeeTableData(answer);
+        roleTableData(answer);
+        start();
+    }
+    );
+
+    function employeeTableData(answer) {
         connection.query(
-            "INSERT INTO employee SET", 
-            (answer.manager), 
-            function (err, res) {
+            "INSERT INTO employee SET",
+            {
+                first_name: answer.firstName,
+                last_name: answer.lastName,
+            },
+            function (err) {
+                if (err) throw err;
+            }
+        )
+    };
+
+    function roleTableData(answer) {
+        connection.query(
+            "INSERT INTO role SET",
+            {
+                title: answer.title,
+                salary: answer.salary,
+            },
+            function (err) {
+                if (err) throw err;
+            }
+        )
+    };
+}
+
+//remove employee
+function rmEmployee() {
+    inquirer.prompt({
+        name: "remove",
+        type: "list",
+        message: "Select which employee you would like to remove.",
+        choices: ["employee choices go here"],
+    }).then(function (answer) {
+        connection.query("DELETE FROM employee WHERE name = ?", (answer.remove), function (err, res) {
             if (err) throw err;
             console.log(res);
             start();
@@ -139,8 +177,60 @@ function addEmployee() {
     })
 };
 
-//remove employee
-
 //update employee role
+function updateEmployeeRole() {
+    inquirer.prompt(
+        {
+            name: "employee",
+            type: "list",
+            message: "Select which employee you would like to update the role for.",
+            choices: ["employee choices go here"],
+        },
+        {
+            name: "role",
+            type: "list",
+            message: "Select a role for the employee.",
+            choices: ["role choices go here"],
+        }
+    ).then(function (answer) {
+        connection.query("UPDATE employee SET role = ? WHERE name = ?",
+            [
+                { role: answer.role },
+                { name: answer.employee }
+            ],
+            function (err, res) {
+                if (err) throw err;
+                console.log(res);
+                start();
+            })
+    })
+};
 
 //update employee manager
+function updateEmployeeMgr() {
+    inquirer.prompt(
+        {
+            name: "employee",
+            type: "list",
+            message: "Select which employee you would like to update the manager for.",
+            choices: ["employee choices go here"],
+        },
+        {
+            name: "manager",
+            type: "list",
+            message: "Select a manager for the employee.",
+            choices: ["manager choices go here"],
+        }
+    ).then(function (answer) {
+        connection.query("UPDATE employee SET manager = ? WHERE name = ?",
+            [
+                { manager: answer.manager },
+                { name: answer.employee }
+            ],
+            function (err, res) {
+                if (err) throw err;
+                console.log(res);
+                start();
+            })
+    })
+};
