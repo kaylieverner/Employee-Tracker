@@ -1,4 +1,5 @@
 var mysql = require("mysql");
+// var connection = mysql.createConnection({ multipleStatements: true });
 var inquirer = require("inquirer");
 var columnify = require('columnify');
 
@@ -284,7 +285,7 @@ function addRole() {
         })
 };
 
-//remove employee - UPDATE THEN FUNCTION 
+//remove employee 
 function rmEmployee() {
     connection.query("SELECT * FROM employee", function (err, results) {
         if (err) throw err;
@@ -301,8 +302,8 @@ function rmEmployee() {
             }
         }).then(function (answer) {
             connection.query(
-                "DELETE FROM employee WHERE first_name = ? AND last_name = ?",
-                [answer.first_name, answer.last_name],
+                "DELETE FROM employee WHERE id = (SELECT id WHERE CONCAT (first_name, ' ', last_name) = ?)",
+                [answer.employee],
                 function (err, res) {
                     if (err) throw err;
                     start();
@@ -313,7 +314,7 @@ function rmEmployee() {
 
 //update employee role - UPDATE THE THEN STATEMENTS 
 function updateEmployeeRole() {
-    connection.query("SELECT * FROM employee", function (err, results) {
+    connection.query('SELECT * FROM employee; SELECT title FROM role;', function (err, results) {
         if (err) throw err;
         inquirer.prompt(
             {
@@ -321,44 +322,29 @@ function updateEmployeeRole() {
                 type: "list",
                 message: "Select which employee you would like to update the role for.",
                 choices: function () {
-                    var choiceArray = [];
-                    for (var i = 0; i < results.length; i++) {
-                        choiceArray.push(results[i].first_name + " " + results[i].last_name);
-                    }
+                    let choiceArray = results[0].map(choice => choice.first_name + " " + last_name);
                     return choiceArray;
-                },
-            }).then(function (answer) {
-                connection.query("SELECT * FROM role", function (err, results) {
-                    if (err) throw err;
-                    inquirer.prompt(
-                        {
-                            name: "role",
-                            type: "list",
-                            message: "Which role would you like to assign to the employee?",
-                            choices: function () {
-                                var roleArray = [];
-                                for (var i = 0; i < results.length; i++) {
-                                    roleArray.push(results[i].title);
-                                }
-                                return roleArray;
-                            }
-                        }).then(function (answer) {
-                            connection.query("UPDATE employee SET role_id = ? WHERE name = ?",
-                                [
-                                    { role_id: answer.role },
-                                    { name: answer.employee }
-                                ],
-                                function (err, res) {
-                                    if (err) throw err;
-                                    console.log(res);
-                                    start();
-                                })
-                        })
-                })
+                }
+            },
+            {
+                name: "title",
+                type: "list",
+                message: "Select which title you would like to assign to the employee.",
+                choices: function () {
+                    let choiceArray = results[0].map(choice => choice.title);
+                    return choiceArray;
+                }
+            }
+        );
+    }).then(function (answer) {
+        connection.query("UPDATE employee SET role_id = (SELECT id FROM role WHERE title = ?) WHERE id = (SELECT id FROM employee WHERE CONCAT first_name, ' ', last_name) = ?", [answer.title, answer.employee],
+            function (err, res) {
+                if (err) throw err;
+                console.log(res);
+                start();
             })
     })
 };
-
 
 
 //update employee manager
