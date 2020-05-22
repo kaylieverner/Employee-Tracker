@@ -1,11 +1,11 @@
 var mysql = require("mysql");
-// var connection = mysql.createConnection({ multipleStatements: true });
 var inquirer = require("inquirer");
 var columnify = require('columnify');
 
 // console.log(columnify(data, {columns: ["ID", "First Name", "Last Name", "Title", "Department", "Salary", "Manager"]}));
 
 var connection = mysql.createConnection({
+    multipleStatements: true,
     host: "localhost",
     port: 3306,
     user: "root",
@@ -162,65 +162,68 @@ function viewAllbyMgr() {
                 return managerArray;
             }
         }).then(function (answer) {
-            connection.query("SELECT id FROM employee WHERE CONCAT(first_name,' ',last_name) = ?", (answer.manager), function (err, res) {
+            connection.query("SELECT first_name, last_name FROM employee WHERE manager_id = (SELECT id WHERE CONCAT(first_name,' ', last_name) = ?)", (answer.manager), function (err, res) {
                 if (err) throw err;
                 return res;
             })
         })
-        // .then(function (res) {
-        //     connection.query("SELECT * FROM employee WHERE manager_id = ?", (res), function (err, res) {
-        //         if (err) throw err; 
-        //         console.log(res);
-        //         start();
-        //     })
-        // })
     })
 };
 
 //add employee
 function addEmployee() {
-    connection.query("SELECT title FROM role; SELECT first_name, last_name FROM employee WHERE manager_id IS NULL", function (err, results) {
-        if (err) throw err;
-        inquirer.prompt([
-            {
-                name: "firstName",
-                type: "input",
-                message: "Enter the employee's first name."
-            },
-            {
-                name: "lastName",
-                type: "input",
-                message: "Enter the employee's last name."
-            },
-            {
-                name: "role",
-                type: "list",
-                message: "Select the employee's role.",
-                choices: function () {
-                    let choiceArray = results[0].map(choice => choice.title);
-                    return choiceArray;
+    connection.query("SELECT title FROM role; SELECT first_name, last_name FROM employee WHERE manager_id IS NULL",
+        function (err, results) {
+            if (err) throw err;
+            inquirer.prompt([
+                {
+                    name: "firstName",
+                    type: "input",
+                    message: "Enter the employee's first name."
+                },
+                {
+                    name: "lastName",
+                    type: "input",
+                    message: "Enter the employee's last name."
+                },
+                {
+                    name: "title",
+                    type: "list",
+                    message: "Select the employee's title.",
+                    choices: function () {
+                        let choiceArray = results[0].map(choice => choice.title);
+                        return choiceArray;
+                    }
+                },
+                {
+                    name: "manager",
+                    type: "list",
+                    message: "Select the employee's manager.",
+                    choices: function () {
+                        let choiceArray = results[1].map(choice => choice.first_name + " " + choice.last_name);
+                        return choiceArray;
+                    }
                 }
-            },
-            {
-                name: "manager",
-                type: "list",
-                message: "Select the employee's manager.",
-                choices: function () {
-                    let choiceArray = results[1].map(choice => choice.first_name + " " + last_name);
-                    return choiceArray;
-                }
+            ]).then(function (answer) {
+                connection.query("SELECT id FROM employee WHERE CONCAT(first_name, ' ', last_name) = ?", [answer.manager], function (err, managerRes) {
+                    if (err) throw err;
+                    else {
+                        var managerID = managerRes[0].id;
+                        connection.query("INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, (SELECT id from role WHERE title = ?), ?)", [answer.firstName, answer.lastName, answer.title, managerID],
+                            function (err, res) {
+                                if (err) throw err
+                                else {
+                                    console.log("Employee was created successfully!");
+                                    start();
+                                    console.log(res);
+                                }
+                            })
+                    }
+                })
             }
-        ])
-    }).then(function (answer) {
-        connection.query(
-            "INSERT INTO employee (first_name, last_name, role_id, manager_id)VALUES (?, ?, (SELECT id from role WHERE title = ?), (SELECT id FROM (SELECT id FROM employee WHERE CONCAT(first_name, ' ', last_name) = ?))",
-            [answer.firstName, answer.lastName, answer.role, answer.manager],
-            function (err) {
-                if (err) throw err;
-            }
-        )
-        start();
-    })
+            )
+        }
+    )
 };
 
 //add dept 
@@ -316,13 +319,13 @@ function rmEmployee() {
 function updateEmployeeRole() {
     connection.query('SELECT * FROM employee; SELECT title FROM role;', function (err, results) {
         if (err) throw err;
-        inquirer.prompt(
+        inquirer.prompt([
             {
                 name: "employee",
                 type: "list",
                 message: "Select which employee you would like to update the role for.",
                 choices: function () {
-                    let choiceArray = results[0].map(choice => choice.first_name + " " + last_name);
+                    let choiceArray = results[0].map(choice => choice.first_name + " " + choice.last_name);
                     return choiceArray;
                 }
             },
@@ -331,18 +334,18 @@ function updateEmployeeRole() {
                 type: "list",
                 message: "Select which title you would like to assign to the employee.",
                 choices: function () {
-                    let choiceArray = results[0].map(choice => choice.title);
+                    let choiceArray = results[1].map(choice => choice.title);
                     return choiceArray;
                 }
             }
-        );
-    }).then(function (answer) {
-        connection.query("UPDATE employee SET role_id = (SELECT id FROM role WHERE title = ?) WHERE id = (SELECT id FROM employee WHERE CONCAT first_name, ' ', last_name) = ?", [answer.title, answer.employee],
-            function (err, res) {
-                if (err) throw err;
-                console.log(res);
-                start();
-            })
+        ]).then(function (answer) {
+            connection.query("UPDATE employee SET role_id = (SELECT id FROM role WHERE title = ?) WHERE id = (SELECT id WHERE CONCAT (first_name, ' ', last_name) = ?)", [answer.title, answer.employee],
+                function (err, res) {
+                    if (err) throw err;
+                    console.log(res);
+                    start();
+                })
+        })
     })
 };
 
